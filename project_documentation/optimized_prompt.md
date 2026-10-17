@@ -130,7 +130,7 @@ subagent deliverables.
 
 ## Phase 5 — Shiny GUI & App Packaging (Modeled on HCR Probe Designer)
 
-1. Use `/Volumes/Backup_Plus/Applications/HCR Probe Designer.app/Contents/Resources/app/HCR_probe_design_v41.R`
+1. Use `/Volumes/Backup_Plus/HCR_probe_designer/HCR_probe_design_v41.R` (v42.2.0, newer than the bundled `.app` copy v42.1.0)
    and `runner.R` / `main.js` as the **styling, reactive architecture, and packaging
    reference** (do not demand the older prototype unless a blocker arises).
 2. **GUI flow:** species selector (auto-detecting `d_<species>` folders in

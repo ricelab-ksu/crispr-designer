@@ -1,0 +1,91 @@
+✔ | F W  S  OK | Context
+
+⠏ |          0 | gene_lookup                                                    
+⠋ |          1 | gene_lookup                                                    
+⠸ |          4 | gene_lookup                                                    
+⠦ |          7 | gene_lookup                                                    
+⠏ |         10 | gene_lookup                                                    
+⠼ |         15 | gene_lookup                                                    
+⠦ |         17 | gene_lookup                                                    
+⠹ |         23 | gene_lookup                                                    
+⠇ |         29 | gene_lookup                                                    
+⠋ |         31 | gene_lookup                                                    
+⠹ |         33 | gene_lookup                                                    
+⠼ |         35 | gene_lookup                                                    
+⠴ |         36 | gene_lookup                                                    
+⠦ |         37 | gene_lookup                                                    
+⠧ |         38 | gene_lookup                                                    
+⠏ |         40 | gene_lookup                                                    
+⠙ |         42 | gene_lookup                                                    
+⠼ |         45 | gene_lookup                                                    
+⠧ |         48 | gene_lookup                                                    
+⠏ |         50 | gene_lookup                                                    
+⠴ |         56 | gene_lookup                                                    
+⠇ |         89 | gene_lookup                                                    
+⠸ |        104 | gene_lookup                                                    
+⠋ |        111 | gene_lookup                                                    
+⠧ |        118 | gene_lookup                                                    
+⠸ |        124 | gene_lookup                                                    
+⠴ |        126 | gene_lookup                                                    
+⠸ |        134 | gene_lookup                                                    
+⠋ |        141 | gene_lookup                                                    
+✔ |        144 | gene_lookup [6.9s]
+
+⠏ |          0 | genome_registry                                                
+⠸ |         14 | genome_registry                                                
+⠙ |         42 | genome_registry                                                
+⠇ |         59 | genome_registry                                                
+⠙ |         62 | genome_registry                                                
+⠧ |         68 | genome_registry                                                
+⠸ |         74 | genome_registry                                                
+⠦ |         77 | genome_registry                                                
+⠸ |         84 | genome_registry                                                
+✔ |         98 | genome_registry [7.4s]
+
+⠏ |          0 | grna_engine                                                    
+⠙ |          2 | grna_engine                                                    
+⠹ |         33 | grna_engine                                                    
+⠙ |         42 | grna_engine                                                    
+⠧ |         58 | grna_engine                                                    
+⠙ |         62 | grna_engine                                                    
+⠏ |         70 | grna_engine                                                    
+⠹ |        103 | grna_engine                                                    
+⠴ |        136 | grna_engine                                                    
+⠇ |        169 | grna_engine                                                    
+⠙ |        202 | grna_engine                                                    
+✔ |        206 | grna_engine [16.0s]
+
+⠏ |          0 | homology_arms                                                  
+⠋ |          1 | homology_arms                                                  
+⠸ |          4 | homology_arms                                                  
+⠴ |         36 | homology_arms                                                  
+⠧ |         38 | homology_arms                                                  
+⠋ |         41 | homology_arms                                                  
+⠸ |         64 | homology_arms                                                  
+⠼ |         75 | homology_arms                                                  
+⠦ |         87 | homology_arms                                                  
+⠏ |        110 | homology_arms                                                  
+⠙ |        112 | homology_arms                                                  
+⠙ |        132 | homology_arms                                                  
+⠇ |        149 | homology_arms                                                  
+⠇ |        169 | homology_arms                                                  
+⠴ |        186 | homology_arms                                                  
+⠹ |        193 | homology_arms                                                  
+⠼ |        205 | homology_arms                                                  
+⠼ |        215 | homology_arms                                                  
+⠏ |        230 | homology_arms                                                  
+⠧ |        238 | homology_arms                                                  
+⠴ |        256 | homology_arms                                                  
+✔ |        271 | homology_arms [5.8s]
+
+⠏ |          0 | shiny_app                                                      
+⠹ |          3 | shiny_app                                                      
+⠏ |         10 | shiny_app                                                      
+⠦ |         27 | shiny_app                                                      
+⠹ |         33 | shiny_app                                                      
+✔ |         44 | shiny_app [7.7s]
+
+══ Results ═════════════════════════════════════════════════════════════════════
+Duration: 43.8 s
+
+[ FAIL 0 | WARN 0 | SKIP 0 | PASS 763 ]

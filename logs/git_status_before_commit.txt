@@ -1,0 +1,12 @@
+ M project_documentation/README.md
+ M project_documentation/delegation_plan.md
+ M project_documentation/optimized_prompt.md
+ M project_documentation/status_board.md
+?? .gene_index_cache/
+?? Cas9_sgRNA_design.R
+?? R/
+?? README.md
+?? app.R
+?? logs/
+?? project_documentation/validation_report.md
+?? tests/

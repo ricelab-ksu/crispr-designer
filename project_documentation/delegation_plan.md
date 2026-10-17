@@ -42,7 +42,7 @@ Orchestrator assigns tickets in dependency order and reviews deliverables **only
 
 ### T6 — Shiny GUI & Electron Bundle (Phase 5)
 - **Owner:** UI subagent
-- **Scope:** Build the Shiny UI + server (`Cas9_sgRNA_design.R`) modeled on `/Volumes/Backup_Plus/Applications/HCR Probe Designer.app/Contents/Resources/app/HCR_probe_design_v41.R` (and compatible with `runner.R` / Electron `main.js`). Include: species selector, gene lookup search bar, isoform + cut-site/homology-arm track plot, interactive ranked candidate table (filterable by 5′ UTR/promoter vs. coding exon), 1–2 kb homology-arm slider/options, nucleotide-level cut-site zoom view, and one-click ZIP/FASTA/CSV download.
+- **Scope:** Build the Shiny UI + server (`Cas9_sgRNA_design.R`) modeled on `/Volumes/Backup_Plus/HCR_probe_designer/HCR_probe_design_v41.R` (v42.2.0, newer than the bundled `.app` copy v42.1.0; and compatible with `runner.R` / Electron `main.js`). Include: species selector, gene lookup search bar, isoform + cut-site/homology-arm track plot, interactive ranked candidate table (filterable by 5′ UTR/promoter vs. coding exon), 1–2 kb homology-arm slider/options, nucleotide-level cut-site zoom view, and one-click ZIP/FASTA/CSV download.
 - **Deliverable:** Runnable Shiny app in `/Volumes/Backup_Plus/projects/bioinformatics/projects/Cas9_sgRNA_design/` + usage README.
 - **Acceptance:** App launches cleanly via `Rscript` and completes the full workflow from gene selection to gRNA ranking and 1–2 kb homology-arm export on real *Drosophila* genome data.
 - **Dependencies:** T3, T4, T5.
