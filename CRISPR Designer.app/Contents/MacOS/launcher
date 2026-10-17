@@ -1,0 +1,20 @@
+#!/bin/bash
+# "CRISPR Designer.app" launcher — opens a Terminal tab running the app
+APP_SCRIPT="/Users/work/bin/crispr-designer.sh"
+
+# --check mode (no-op launch, preflight only) is useful for validation
+if [ "$1" = "--check" ]; then
+  exec bash "$APP_SCRIPT" --check
+fi
+
+# Open a new Terminal tab with the launcher script in the foreground
+# (Rscript Cas9_sgRNA_design.R runs in foreground; when stopped, tab stays open for logs)
+osascript -e "
+tell application \"Terminal\"
+  activate
+  do script \"bash $APP_SCRIPT; exec bash\"
+end tell
+" >/dev/null 2>&1 &
+
+sleep 1
+exit 0
