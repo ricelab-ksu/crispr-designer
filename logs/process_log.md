@@ -42,4 +42,6 @@ across all 5 suites (`test-genome_registry.R` 98, `test-gene_lookup.R` 144, `tes
 
 ## Commits
 - `f23c5e0` — Initialize Cas9_sgRNA_design repo with Lyra-optimized prompt and Kanban backlog (T1–T7).
-- *(this commit)* — Complete T1–T7: R modules, testthat suites, Shiny GUI, validation report, docs, and dev process logs.
+- `9fb3620` — Complete T1–T7: R modules, testthat suites, Shiny GUI, validation report, docs, and dev process logs.
+- `d2d7162` — Add one-click `launch_app.sh` for local Shiny server + auto-browser open.
+- `c4da7b6` — Add `CRISPR Designer.app` (native macOS one-click launcher: `Info.plist` + `MacOS/launcher` + `Resources/icon.icns`), modeled on the user's existing `scRNA Dashboard.app`; calls `/Users/work/bin/crispr-designer.sh` which preflights the drive/R environment then runs `Rscript Cas9_sgRNA_design.R` in a new Terminal tab with auto-browser open.

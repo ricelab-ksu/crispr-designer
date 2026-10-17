@@ -45,7 +45,16 @@ Modeled after the lab's **HCR Probe Designer (`HCR_probe_design_v41.R`)** for se
 
 ### 1. Launch Interactive Shiny GUI
 
+**One-click (recommended):** Double-click `CRISPR Designer.app` in this folder.
+- Opens a new Terminal tab, preflights the drive + R environment, then runs `Rscript Cas9_sgRNA_design.R` — your default browser auto-opens to `http://127.0.0.1:7789`.
+- Press `Ctrl+C` in that Terminal tab to stop the server when done.
+- First time: right-click → **Open** if macOS Gatekeeper blocks it (not code-signed).
+- (Under the hood, the `.app` calls `/Users/work/bin/crispr-designer.sh`, modeled on your `scRNA Dashboard.app` pattern.)
+
+**Alternatively:**
 ```bash
+./launch_app.sh
+# or directly:
 Rscript Cas9_sgRNA_design.R
 ```
 
