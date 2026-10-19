@@ -1232,6 +1232,83 @@ CAS9_CUSTOM_CSS <- "
   .cas9-dl-bar { background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
 "
 
+# ============================================================================
+# Onboarding help (CRISPR Designer)
+# ============================================================================
+# Plain-language getting-started content, mirroring the Plasmid Designer's
+# onboarding card so the two apps feel like one suite.
+
+cas9_help_concat_example <- function() {
+  paste0(
+    "A guide RNA is built from named blocks:\n",
+    "  spacer (20 nt) + scaffold = the sgRNA\n",
+    "  e.g. GAGTCTGACCTGACTGACTG + GTTTAGAGCTAGAA... = the full guide\n",
+    "Concatenation is literal: ATGC + CGGG = ATGCCGGG. Nothing is added\n",
+    "between blocks."
+  )
+}
+
+cas9_help_arm_example <- function() {
+  paste0(
+    "Homology arms are GENOMIC sequence either side of the Cas9 cut site.\n",
+    "SpCas9 cuts 3 bp 5' of the PAM, so the 5' arm ends at the cut and the\n",
+    "3' arm starts there. This app exports the full genomic arms (in genomic\n",
+    "orientation, rule R4); the Plasmid Designer trims them to the\n",
+    "protocol-validated 250-1000 bp window (rule R2)."
+  )
+}
+
+cas9_help_glossary <- function() {
+  data.frame(
+    term = c("Spacer", "PAM", "Cut site", "Homology arm", "On-target score",
+             "Specificity score", "Tier"),
+    meaning = c(
+      "The 20-nt sequence that directs Cas9; excludes the NGG PAM.",
+      "The NGG trinucleotide 3' of the spacer that Cas9 requires.",
+      "Where Cas9 cuts: 3 bp 5' of the first PAM base, blunt, on both strands.",
+      "Genomic sequence flanking the cut site that directs HDR (250-1000 bp).",
+      "Predicted cutting efficiency (Doench 2016 Rule Set 2 / CRISPRscan).",
+      "Predicted freedom from off-target cutting (CFD / MIT).",
+      "Genomic context bucket; Tier 1 = 5'-most shared coding exons."
+    ),
+    stringsAsFactors = FALSE
+  )
+}
+
+cas9_onboarding_card <- function() {
+  steps <- c(
+    "Pick a Drosophila species and prepare its reference genome (one click).",
+    "Look up your gene by symbol, FlyBase ID, CG number, or coordinates.",
+    "Choose a target-context priority and score thresholds.",
+    "Run the design, then pick a guide from the ranked table or track plot.",
+    "Export the guide bundle and import it in the Plasmid Designer (port 7790)."
+  )
+  gl <- cas9_help_glossary()
+  shiny::tags$details(
+    class = "cas9-onboarding",
+    shiny::tags$summary(style = "cursor:pointer; font-weight:700; color:#0284c7;",
+                        "How this app works (click to expand)"),
+    shiny::tags$div(style = "padding:10px 4px; font-size:12px; line-height:1.6; color:#334155;",
+      shiny::tags$ol(lapply(steps, shiny::tags$li)),
+      shiny::tags$h5(style = "margin:10px 0 4px 0;", "Worked examples"),
+      shiny::tags$pre(style = "font-size:11px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:8px; white-space:pre-wrap;",
+                      cas9_help_concat_example()),
+      shiny::tags$pre(style = "font-size:11px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:8px; white-space:pre-wrap;",
+                      cas9_help_arm_example()),
+      shiny::tags$h5(style = "margin:10px 0 4px 0;", "Glossary"),
+      shiny::tags$table(
+        style = "font-size:11.5px; width:100%; border-collapse:collapse;",
+        shiny::tags$tbody(lapply(seq_len(nrow(gl)), function(i) {
+          shiny::tags$tr(
+            shiny::tags$td(style = "padding:3px 8px 3px 0; font-weight:600; vertical-align:top; white-space:nowrap;",
+                           gl$term[i]),
+            shiny::tags$td(style = "padding:3px 0; color:#475569;", gl$meaning[i]))
+        }))
+      )
+    )
+  )
+}
+
 ui <- fluidPage(
   tags$head(tags$style(HTML(CAS9_CUSTOM_CSS))),
   div(style = "padding: 12px 4px 6px 4px; border-bottom: 1px solid #e2e8f0; margin-bottom: 14px; display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap;",
@@ -1385,6 +1462,7 @@ ui <- fluidPage(
 
     mainPanel(
       width = 8,
+      cas9_onboarding_card(),
       uiOutput("download_bar_ui"),
       uiOutput("gene_banner_ui"),
       uiOutput("track_plot_card_ui"),
