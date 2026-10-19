@@ -1342,31 +1342,14 @@ ui <- fluidPage(
 
       hr(style = "margin:10px 0;"),
 
-      # 4. Homology Arm Designer Controls
-      div(class = "cas9-section-hdr", "4. Homology Arm Designer (1–2 kb)"),
-      checkboxInput("symmetric_arms", "Symmetric 5' and 3' arm lengths", value = TRUE),
-      sliderInput(
-        "arm_5p_len",
-        "5' Homology Arm Length (bp, ending 3 bp 5' of PAM)",
-        min = 1000, max = 2000, value = 1000, step = 100
-      ),
-      conditionalPanel(
-        condition = "!input.symmetric_arms",
-        sliderInput(
-          "arm_3p_len",
-          "3' Homology Arm Length (bp)",
-          min = 1000, max = 2000, value = 1000, step = 100
-        )
-      ),
-      radioButtons(
-        "arm_3p_anchor",
-        "3' Homology Arm Start Anchor",
-        choices = c(
-          "Blunt Cut Site (3 bp 5' of PAM; seamlessly abuts 5' arm)" = "cut_site",
-          "PAM Start (begins at 1st base of NGG PAM)"                = "pam_start"
-        ),
-        selected = "cut_site"
-      ),
+      # 4. Homology arm provenance (design lives in the Plasmid Designer)
+      div(class = "cas9-section-hdr", "4. Homology Arms \u2014 Export Only"),
+      helpText(paste0("Homology-arm design has moved to the Plasmid Designer app ",
+                      "(port 7790), where arms are sized to the protocol-validated ",
+                      "250\u20131000 bp window and assembled into attL donor fragments. ",
+                      "This app exports the full genomic arms with each guide ",
+                      "(rule R4: arms are kept in genomic orientation); the ",
+                      "Plasmid Designer trims them to your chosen length on import.")),
       checkboxInput("orient_5p_to_3p", "Flip minus-strand loci 5' -> 3' in track plot", value = FALSE),
 
       hr(style = "margin:10px 0;"),
@@ -1496,12 +1479,11 @@ server <- function(input, output, session) {
     )
   })
 
-  # ---- 3. Symmetric Arm Slider Sync -----------------------------------------
-  observeEvent(input$arm_5p_len, {
-    if (isTRUE(input$symmetric_arms)) {
-      updateSliderInput(session, "arm_3p_len", value = input$arm_5p_len)
-    }
-  })
+  # ---- 3. Homology arm defaults (design now lives in the Plasmid Designer) --
+  # The app still extracts the full genomic arms so they can be exported with
+  # each guide; the protocol-validated window is 250-1000 bp, so we extract at
+  # the 1000 bp ceiling and let the Plasmid Designer trim to the user's length.
+  CAS9_ARM_DEFAULT_BP <- 1000L
 
   # ---- 4. Core Design Execution ---------------------------------------------
   execute_design <- function() {
@@ -1511,8 +1493,8 @@ server <- function(input, output, session) {
       showNotification("Please enter a gene symbol, FlyBase ID, CG number, or coordinate.", type = "warning")
       return()
     }
-    arm5 <- as.integer(input$arm_5p_len)
-    arm3 <- if (isTRUE(input$symmetric_arms)) arm5 else as.integer(input$arm_3p_len)
+    arm5 <- CAS9_ARM_DEFAULT_BP
+    arm3 <- CAS9_ARM_DEFAULT_BP
     tiers <- if (length(input$allowed_tiers)) as.integer(input$allowed_tiers) else 1:5
 
     withProgress(message = paste0("Designing SpCas9 gRNAs & Homology Arms for '", q, "' (D. ", sp, ")..."), value = 0.15, {
@@ -1530,7 +1512,7 @@ server <- function(input, output, session) {
           exclude_tttt         = isTRUE(input$exclude_tttt),
           arm_5p_len           = arm5,
           arm_3p_len           = arm3,
-          arm_3p_anchor        = input$arm_3p_anchor,
+          arm_3p_anchor        = "cut_site",
           selected_rank        = 1L,
           seed                 = 42L
         )
@@ -1654,14 +1636,14 @@ server <- function(input, output, session) {
     wf  <- workflow_state()
     row <- live_selected_row()
     if (is.null(wf) || is.null(row) || nrow(row) == 0L) return(NULL)
-    arm5 <- as.integer(input$arm_5p_len)
-    arm3 <- if (isTRUE(input$symmetric_arms)) arm5 else as.integer(input$arm_3p_len)
+    arm5 <- CAS9_ARM_DEFAULT_BP
+    arm3 <- CAS9_ARM_DEFAULT_BP
     arm <- safe_design_homology_arms(
       guide_row     = row,
       species       = wf$species,
       arm_5p_len    = arm5,
       arm_3p_len    = arm3,
-      arm_3p_anchor = input$arm_3p_anchor,
+      arm_3p_anchor = "cut_site",
       gene_model    = wf$gene_model
     )
     zm <- compute_cut_site_zoom_view(arm, flank_bp = 30L)
