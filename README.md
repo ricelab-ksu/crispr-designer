@@ -68,6 +68,23 @@ Rscript Cas9_sgRNA_design.R --gene ebony --species melanogaster --arm5 1200 --ar
 
 Writes `gRNA_candidates.csv`, `homology_arms.fasta`, `design_summary.json`, `isoform_track_plot.pdf`, `CRISPR_design_log.txt`, and `CRISPR_design_bundle.zip`.
 
+### Export for Plasmid Designer
+
+In the app, after the workflow runs and homology arms are designed, click
+**Export guides for Plasmid Designer** (green button in the export bar). This
+writes the `cas9_guide_bundle/1.0` interchange bundle for the **selected**
+guide:
+
+```
+Cas9_<gene>_<species>_guides_for_plasmid_designer.csv   (+ .json sidecar)
+```
+
+Import this CSV in the Plasmid Designer app under
+*Guide RNA source → Import Cas9 Designer bundle*. The bundle is validated by
+`Plasmid_Designer/R/guide_bundle.R` (`read_guide_bundle()`); only the guide
+with designed arms is exported (arms are per selected guide), the 20-nt spacer
+is PAM-excluded, and both homology arms are ≥ 250 bp.
+
 ### 3. Run Unit & Integration Tests
 
 ```bash

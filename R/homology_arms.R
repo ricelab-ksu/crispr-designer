@@ -32,6 +32,10 @@ local({
     if (file.exists(ge_p) && !exists("design_grnas", mode = "function")) {
       tryCatch(source(ge_p, local = FALSE), error = function(e) NULL)
     }
+    pdb_p <- file.path(r, "R", "plasmid_designer_bundle.R")
+    if (file.exists(pdb_p) && !exists("build_plasmid_designer_bundle", mode = "function")) {
+      tryCatch(source(pdb_p, local = FALSE), error = function(e) NULL)
+    }
   }
   if (exists("resolve_chromosome_unified", mode = "function")) {
     assign("resolve_chromosome", resolve_chromosome_unified, envir = .GlobalEnv)

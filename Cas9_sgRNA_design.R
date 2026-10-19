@@ -69,7 +69,10 @@ CAS9_APP_ROOT <- .resolve_cas9_app_root()
     "genome_registry.R",
     "gene_lookup.R",
     "grna_engine.R",
-    "homology_arms.R"
+    "homology_arms.R",
+    "pjat_plasmids.R",
+    "donor_payload.R",
+    "plasmid_designer_bundle.R"
   )
   for (mf in mod_files) {
     p <- file.path(root, "R", mf)
@@ -1366,6 +1369,29 @@ ui <- fluidPage(
       ),
       checkboxInput("orient_5p_to_3p", "Flip minus-strand loci 5' -> 3' in track plot", value = FALSE),
 
+      hr(style = "margin:10px 0;"),
+
+      # 5. Donor Payload (Selectable Marker)
+      div(class = "cas9-section-hdr", "5. Donor Payload (Selectable Marker)"),
+      textAreaInput(
+        "donor_payload_seq",
+        "Donor DNA sequence (FASTA or raw)",
+        placeholder = "Paste FASTA or raw sequence here...",
+        rows = 5
+      ),
+      fileInput(
+        "donor_payload_file",
+        "Or upload FASTA",
+        accept = c(".fa", ".fasta", ".fa.gz", ".fasta.gz")
+      ),
+      checkboxInput("donor_payload_orient_minus", "Reverse-complement payload", value = FALSE),
+      actionButton(
+        "run_donor_btn",
+        "Build Donor Construct (5' arm + payload + 3' arm)",
+        class = "btn-info btn-lg",
+        style = "width:100%; font-weight:700; margin-top:6px;"
+      ),
+
       actionButton(
         "run_design_btn",
         "Run Cas9 gRNA + Homology Arm Design",
@@ -1380,7 +1406,8 @@ ui <- fluidPage(
       uiOutput("gene_banner_ui"),
       uiOutput("track_plot_card_ui"),
       uiOutput("grna_table_card_ui"),
-      uiOutput("cut_site_zoom_card_ui")
+      uiOutput("cut_site_zoom_card_ui"),
+      uiOutput("donor_card_ui")
     )
   )
 )
@@ -1526,6 +1553,52 @@ server <- function(input, output, session) {
 
   observeEvent(input$run_design_btn, { execute_design() })
 
+  # ---- Donor construct (section 5) ----------------------------------------
+  pjd_donor_construct <- reactiveVal(NULL)
+  donor_status <- reactiveVal(NULL)
+
+  observeEvent(input$run_donor_btn, {
+    wf <- workflow_state()
+    az <- live_arm_and_zoom()
+    if (is.null(wf) || is.null(az)) {
+      donor_status(list(ok = FALSE, msg = "Run the Cas9 design first to generate homology arms."))
+      return()
+    }
+    arm <- az$arm
+    if (is.null(arm) || is.null(arm$arm_5p_seq) || is.null(arm$arm_3p_seq)) {
+      donor_status(list(ok = FALSE, msg = "Homology arms not available for the selected guide."))
+      return()
+    }
+
+    # Read payload
+    payload <- NULL
+    if (!is.null(input$donor_payload_seq) && nzchar(trimws(input$donor_payload_seq))) {
+      payload <- tryCatch(read_donor_payload(input$donor_payload_seq, is_path = FALSE),
+                          error = function(e) {
+                            donor_status(list(ok = FALSE, msg = conditionMessage(e))); NULL
+                          })
+    } else if (!is.null(input$donor_payload_file) && nzchar(input$donor_payload_file$datapath)) {
+      payload <- tryCatch(read_donor_payload(input$donor_payload_file$datapath, is_path = TRUE),
+                          error = function(e) {
+                            donor_status(list(ok = FALSE, msg = conditionMessage(e))); NULL
+                          })
+    }
+    if (is.null(payload)) return()
+
+    orient <- if (isTRUE(input$donor_payload_orient_minus)) "-" else "+"
+    dc <- tryCatch(
+      assemble_donor_construct(arm, payload, orient = orient,
+                               name = paste0(wf$gene_model$gene_symbol[1], "_donor")),
+      error = function(e) {
+        donor_status(list(ok = FALSE, msg = conditionMessage(e))); NULL
+      }
+    )
+    if (is.null(dc)) return()
+
+    donor_status(list(ok = TRUE, msg = "Donor construct built."))
+    pjd_donor_construct(dc)
+  })
+
   # Auto-run initial default design on startup for immediate interactive view
   observeEvent(TRUE, {
     if (is.null(workflow_state())) {
@@ -1627,7 +1700,9 @@ server <- function(input, output, session) {
         downloadButton("dl_fasta", "Homology Arms (.fasta)",   class = "btn-default btn-sm"),
         downloadButton("dl_csv",   "Ranked gRNAs (.csv)",      class = "btn-default btn-sm"),
         downloadButton("dl_json",  "Design Summary (.json)",   class = "btn-default btn-sm"),
-        downloadButton("dl_log",   "Reproducibility Log (.txt)", class = "btn-default btn-sm")
+        downloadButton("dl_log",   "Reproducibility Log (.txt)", class = "btn-default btn-sm"),
+        downloadButton("dl_pd_bundle", "Export guides for Plasmid Designer",
+                       class = "btn-success btn-sm")
       )
     )
   })
@@ -1766,6 +1841,28 @@ server <- function(input, output, session) {
     if (is.null(az)) return(NULL)
     build_cut_site_zoom_ui(az$arm, az$zoom, live_selected_row())
   })
+
+  output$donor_card_ui <- renderUI({
+    dc <- pjd_donor_construct()
+    st <- donor_status()
+    if (is.null(dc) && is.null(st)) return(NULL)
+    tagList(
+      div(class = "cas9-card",
+          h4("Donor Construct (5' arm + payload + 3' arm)", style = "margin-top:0;"),
+          if (!is.null(st) && !isTRUE(st$ok)) {
+            div(class = "cas9-badge cas9-badge-red", st$msg)
+          } else {
+            div(style = "font-size:12px;", "Payload: ", dc$qc$len, " bp | GC: ", round(dc$qc$gc_pct, 1), "% | Max homopolymer: ", dc$qc$max_homopolymer, " | Inserted at donor positions ", dc$payload_start, " to ", dc$payload_end)
+            div(style = "font-size:12px; color:#475569; margin-top:4px;",
+                "Junction left: ", dc$junction_left, " | Junction right: ", dc$junction_right)
+            div(style = "font-size:12px; margin-top:6px;",
+                paste(if (isTRUE(dc$qc$ok)) "Donor QC: PASS" else "Donor QC: REVIEW",
+                      if (length(dc$qc$warnings)) paste("Warnings:", paste(dc$qc$warnings, collapse = "; "))
+                      else ""))
+          }
+      )
+    )
+  })
   # ---- 7. Reproducible Download Handlers ------------------------------------
   file_prefix <- reactive({
     wf <- workflow_state()
@@ -1815,6 +1912,31 @@ server <- function(input, output, session) {
     }
   )
 
+  output$dl_pd_bundle <- downloadHandler(
+    filename = function() {
+      az <- live_arm_and_zoom()
+      gid <- if (!is.null(az) && !is.null(az$arm)) az$arm$guide_id else "selected"
+      paste0(file_prefix(), "_", gid, "_guides_for_plasmid_designer.csv")
+    },
+    content = function(file) {
+      wf <- workflow_state()
+      df <- live_filtered_df()
+      az <- live_arm_and_zoom()
+      validate(need(!is.null(wf),  "Run the design workflow first."),
+               need(!is.null(df) && nrow(df) > 0L, "No ranked guides available."),
+               need(!is.null(az) && !is.null(az$arm),
+                    "Design homology arms for a selected guide first."))
+      write_plasmid_designer_bundle(
+        grna_df     = df,
+        arm_design  = az$arm,
+        metadata    = wf$metadata,
+        gene_symbol = wf$gene_model$gene_symbol,
+        app_version = CAS9_APP_VERSION,
+        file        = file
+      )
+    }
+  )
+
   output$dl_zip <- downloadHandler(
     filename = function() paste0(file_prefix(), "_CRISPR_bundle.zip"),
     content  = function(file) {
@@ -1840,6 +1962,125 @@ server <- function(input, output, session) {
         metadata   = wf$metadata,
         plot_fn    = plot_fn
       )
+    }
+  )
+
+  # ---- Donor payload exports (section 5) ------------------------------------
+  output$dl_donor_fasta <- downloadHandler(
+    filename = function() paste0(file_prefix(), "_donor_payload.fasta"),
+    content = function(file) {
+      dc <- pjd_donor_construct()
+      req(dc)
+      write_donor_fasta(dc, name = file_prefix(), file = file)
+    }
+  )
+
+  output$dl_donor_gb <- downloadHandler(
+    filename = function() paste0(file_prefix(), "_donor_payload.gb"),
+    content = function(file) {
+      dc <- pjd_donor_construct()
+      req(dc)
+      write_donor_genbank(dc, name = file_prefix(), file = file)
+    }
+  )
+
+  output$dl_donor_csv <- downloadHandler(
+    filename = function() paste0(file_prefix(), "_donor_payload.csv"),
+    content = function(file) {
+      dc <- pjd_donor_construct()
+      req(dc)
+      out <- data.frame(
+        construct = file_prefix(),
+        arm_5p_length = nchar(dc$left_arm),
+        arm_5p_seq = dc$left_arm,
+        arm_5p_coords = paste0("chr1:", 1L, "-", nchar(dc$left_arm)),
+        payload_len = nchar(dc$payload),
+        payload_seq = dc$payload,
+        payload_start = dc$payload_start,
+        payload_end = dc$payload_end,
+        payload_orient = dc$orient,
+        qc_len = dc$qc$len,
+        qc_gc_pct = round(dc$qc$gc_pct, 1),
+        qc_max_homopolymer = dc$qc$max_homopolymer,
+        sequence_provenance = dc$sequence_provenance,
+        stringsAsFactors = FALSE
+      )
+      utils::write.csv(out, file = file, row.names = FALSE)
+    }
+  )
+
+  output$dl_donor_json <- downloadHandler(
+    filename = function() paste0(file_prefix(), "_donor_payload.json"),
+    content = function(file) {
+      dc <- pjd_donor_construct()
+      req(dc)
+      payload <- list(
+        schema = "donor_payload/1.0",
+        app_version = CAS9_APP_VERSION,
+        name = file_prefix(),
+        left_arm = list(
+          length = nchar(dc$left_arm),
+          sequence = dc$left_arm
+        ),
+        payload = list(
+          length = nchar(dc$payload),
+          sequence = dc$payload,
+          start = dc$payload_start,
+          end = dc$payload_end,
+          orient = dc$orient,
+          sequence_provenance = dc$sequence_provenance
+        ),
+        right_arm = list(
+          length = nchar(dc$right_arm),
+          sequence = dc$right_arm
+        ),
+        qc = list(
+          ok = dc$qc$ok,
+          warnings = dc$qc$warnings,
+          len = dc$qc$len,
+          gc_pct = round(dc$qc$gc_pct, 2),
+          max_homopolymer = dc$qc$max_homopolymer
+        ),
+        sequence_rule_r6_share = dc$seq_rule_r6_share,
+        seq_rule_synthesis_ok = dc$qc$ok,
+        sequence_provenance = dc$sequence_provenance
+      )
+      json_txt <- jsonlite::toJSON(payload, pretty = TRUE, auto_unbox = TRUE)
+      writeLines(json_txt, file)
+    }
+  )
+
+  output$dl_donor_zip <- downloadHandler(
+    filename = function() paste0(file_prefix(), "_donor_zip.zip"),
+    content = function(file) {
+      dc <- pjd_donor_construct()
+      req(dc)
+      tmp <- tempdir()
+      fa <- file.path(tmp, "donor_payload.fasta")
+      gb <- file.path(tmp, "donor_payload.gb")
+      js <- file.path(tmp, "donor_payload.json")
+      write_donor_fasta(dc, name = file_prefix(), file = fa)
+      write_donor_genbank(dc, name = file_prefix(), file = gb)
+      writeLines(jsonlite::toJSON(list(
+        schema = "donor_payload/1.0",
+        app_version = CAS9_APP_VERSION,
+        left_arm = list(length = nchar(dc$left_arm), sequence = dc$left_arm),
+        payload = list(
+          length = nchar(dc$payload), sequence = dc$payload,
+          start = dc$payload_start, end = dc$payload_end,
+          orient = dc$orient,
+          sequence_provenance = dc$sequence_provenance
+        ),
+        right_arm = list(length = nchar(dc$right_arm), sequence = dc$right_arm),
+        qc = list(
+          ok = dc$qc$ok, warnings = dc$qc$warnings,
+          len = dc$qc$len, gc_pct = round(dc$qc$gc_pct, 2),
+          max_homopolymer = dc$qc$max_homopolymer
+        ),
+        sequence_rule_r6_share = dc$seq_rule_r6_share,
+        sequence_provenance = dc$sequence_provenance
+      ), pretty = TRUE, auto_unbox = TRUE), js)
+      utils::zip(zipfile = file, files = c(fa, gb, js), flags = "-q")
     }
   )
 }
