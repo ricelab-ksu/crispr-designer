@@ -1,5 +1,5 @@
 # ============================================================================
-# tests/testthat/test-plasmid_designer_bundle.R — cas9_guide_bundle/1.0 producer
+# tests/testthat/test-plasmid_designer_bundle.R — cas9_guide_bundle/1.1 producer
 # ============================================================================
 
 library(testthat)
@@ -71,10 +71,14 @@ test_that("build_plasmid_designer_bundle emits all 27 required columns", {
 
 test_that("schema and sidecar keys match the consumer contract", {
   b <- build_plasmid_designer_bundle(make_candidates(), make_arm_design(), make_meta())
-  expect_true(all(b$guides$guide_bundle_schema == "cas9_guide_bundle/1.0"))
-  expect_setequal(names(b$sidecar),
-    c("schema", "app_version", "created_utc", "species", "assembly",
-      "gene_symbol", "n_guides", "arm_policy"))
+  expect_true(all(b$guides$guide_bundle_schema == "cas9_guide_bundle/1.1"))
+  expect_true(all(c("schema", "app_version", "created_utc", "species", "assembly",
+                    "gene_symbol", "n_guides", "arm_policy") %in% names(b$sidecar)))
+  # v1.1 additions: the protocol-validated arm window and trim provenance.
+  expect_equal(b$sidecar$arm_policy, "250-1000 bp validated homology arms")
+  expect_equal(b$sidecar$arm_min_bp, 250L)
+  expect_equal(b$sidecar$arm_max_bp, 1000L)
+  expect_false(b$sidecar$arms_trimmed)
   expect_equal(b$sidecar$n_guides, 1L)
   expect_equal(b$sidecar$species, "melanogaster")
   expect_equal(b$sidecar$gene_symbol, "ebony")
@@ -122,8 +126,22 @@ test_that("write_plasmid_designer_bundle writes CSV + JSON sidecar", {
   expect_true(file.exists(out$csv))
   expect_true(file.exists(out$json))
   sc <- jsonlite::fromJSON(out$json, simplifyVector = FALSE)
-  expect_equal(sc$schema, "cas9_guide_bundle/1.0")
+  expect_equal(sc$schema, "cas9_guide_bundle/1.1")
+  expect_equal(sc$arm_min_bp, 250L)
+  expect_equal(sc$arm_max_bp, 1000L)
   expect_equal(sc$gene_symbol, "ebony")
+})
+
+test_that("arms longer than 1000 bp are trimmed to the R2 ceiling on export", {
+  ad <- make_arm_design(a5 = strrep("A", 1500L), a3 = strrep("C", 1400L))
+  b <- build_plasmid_designer_bundle(make_candidates(), ad, make_meta())
+  expect_equal(b$guides$arm_5p_len, 1000L)
+  expect_equal(b$guides$arm_3p_len, 1000L)
+  expect_true(b$sidecar$arms_trimmed)
+  # cut-site-adjacent bases must be preserved: 5' arm keeps its 3' end,
+  # 3' arm keeps its 5' end (both abut the cut site).
+  expect_equal(substr(b$guides$arm_5p_seq, 1, 1), "A")
+  expect_equal(substr(b$guides$arm_3p_seq, 1, 1), "C")
 })
 
 

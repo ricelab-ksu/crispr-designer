@@ -1,16 +1,28 @@
 # ============================================================================
-# R/plasmid_designer_bundle.R — cas9_guide_bundle/1.0 producer (Plasmid Designer interop)
+# R/plasmid_designer_bundle.R — cas9_guide_bundle/1.1 producer (Plasmid Designer interop)
 # ============================================================================
 # Emits the interchange bundle consumed by Plasmid_Designer's read_guide_bundle():
 #   Cas9_<gene>_<species>_guides_for_plasmid_designer.csv  (+ .json sidecar)
 # One row per exported guide. Arms are per selected guide, so only the guide
 # that has arm design (arm_design$guide_id) is emitted — never NA-padded and
 # never duplicated across rows. Sequence is never fabricated.
+#
+# v1.1 (current): arms are constrained to the protocol-validated 250-1000 bp
+# window (rule R2). Arms longer than 1000 bp are trimmed from their OUTER end
+# (5' arm from its 5' end, 3' arm from its 3' end) so the bases abutting the
+# Cas9 cut site are preserved exactly. v1.0 bundles remain readable by the
+# consumer, so older exports do not break.
 # ============================================================================
 
-PLASMID_DESIGNER_BUNDLE_VERSION <- "1.0.0"
-GB_SCHEMA     <- "cas9_guide_bundle/1.0"
+PLASMID_DESIGNER_BUNDLE_VERSION <- "1.1.0"
+GB_SCHEMA     <- "cas9_guide_bundle/1.1"
 GB_ARM_POLICY <- "250-1000 bp validated homology arms"
+# Protocol-validated arm window (Stern et al. 2024 / protocols.io v3, rule R2).
+# 250 bp is the validated floor; 1000 bp is the validated ceiling. Arms longer
+# than 1000 bp are trimmed to the ceiling before export so the consumer never
+# receives an out-of-window arm.
+GB_ARM_MIN_BP <- 250L
+GB_ARM_MAX_BP <- 1000L
 
 # Columns required by read_guide_bundle(), in contract order.
 .gbu_cols <- c(
@@ -68,9 +80,25 @@ build_plasmid_designer_bundle <- function(grna_df, arm_design, metadata = NULL,
     stop("selected guide '", gid, "' has empty arm_5p_seq/arm_3p_seq; design arms first.")
   }
   a5_len <- nchar(arm5); a3_len <- nchar(arm3)
-  if (a5_len < 250L || a3_len < 250L) {
-    stop("selected guide '", gid, "' has arms < 250 bp (5'=", a5_len, ", 3'=", a3_len,
-         "); increase arm length to >= 250 bp.")
+  if (a5_len < GB_ARM_MIN_BP || a3_len < GB_ARM_MIN_BP) {
+    stop("selected guide '", gid, "' has arms < ", GB_ARM_MIN_BP,
+         " bp (5'=", a5_len, ", 3'=", a3_len,
+         "); increase arm length to >= ", GB_ARM_MIN_BP, " bp.")
+  }
+
+  # Rule R2 ceiling: trim any arm longer than the validated maximum so the
+  # exported bundle is always inside the 250-1000 bp window. The 5' arm is
+  # trimmed from its 5' (outer) end and the 3' arm from its 3' (outer) end so
+  # the arm bases adjacent to the cut site are preserved exactly.
+  arm5_trimmed <- a5_len > GB_ARM_MAX_BP
+  arm3_trimmed <- a3_len > GB_ARM_MAX_BP
+  if (arm5_trimmed) {
+    arm5 <- substr(arm5, a5_len - GB_ARM_MAX_BP + 1L, a5_len)
+    a5_len <- nchar(arm5)
+  }
+  if (arm3_trimmed) {
+    arm3 <- substr(arm3, 1L, GB_ARM_MAX_BP)
+    a3_len <- nchar(arm3)
   }
 
   # ---- identity / provenance ----------------------------------------------
@@ -129,7 +157,13 @@ build_plasmid_designer_bundle <- function(grna_df, arm_design, metadata = NULL,
     assembly    = assembly,
     gene_symbol = gene,
     n_guides    = nrow(df),
-    arm_policy  = GB_ARM_POLICY
+    arm_policy  = GB_ARM_POLICY,
+    arm_min_bp  = GB_ARM_MIN_BP,
+    arm_max_bp  = GB_ARM_MAX_BP,
+    arms_trimmed = isTRUE(arm5_trimmed) || isTRUE(arm3_trimmed),
+    arms_trim_note = if (isTRUE(arm5_trimmed) || isTRUE(arm3_trimmed))
+      sprintf("arms trimmed to %d bp ceiling (R2); arm bases at the cut site preserved",
+              GB_ARM_MAX_BP) else "no trimming required"
   )
 
   tc <- textConnection("csv_buf", open = "w", local = TRUE)
