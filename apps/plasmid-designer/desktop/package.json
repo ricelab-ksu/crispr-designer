@@ -1,0 +1,19 @@
+{
+  "name": "plasmid-designer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Electron-based standalone Plasmid Designer app",
+  "main": "./main.js",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --publish never",
+    "dist": "electron-builder"
+  },
+  "allowScripts": {
+    "electron@36.9.5": true
+  },
+  "devDependencies": {
+    "electron": "36.9.5"
+  },
+  "author": ""
+}
