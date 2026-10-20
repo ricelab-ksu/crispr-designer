@@ -1,0 +1,13 @@
+{
+  "id": "crispr-designer",
+  "title": "CRISPR Designer",
+  "productName": "CRISPR Designer",
+  "version": "1.0.0",
+  "description": "CRISPR Designer — design sgRNAs and homology arms across Drosophila species",
+  "author": "Rice Lab",
+  "appScript": "Cas9_sgRNA_design.R",
+  "accent": "#a6e3a1",
+  "splashSub": "Starting the design engine (R)…",
+  "envPrefix": "CRISPR",
+  "outputDirName": "CRISPR_Designs"
+}

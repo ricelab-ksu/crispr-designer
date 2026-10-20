@@ -1,0 +1,57 @@
+# ============================================================================
+# Gateway attL3 / attL4 / attL5 / attL6 + Drosophila tRNA templates
+# ============================================================================
+# These are the sequences the Janelia Atalanta protocol places at the ends of
+# the SYNTHESIZED donor fragments (Fragment 1 = attL3 + 5' arm + tRNA-sgRNA-tRNA
+# + attL4; Fragment 2 = attL5 + 3' arm + attL6).
+#
+# Why the pJAT plasmids do not contain them: the 24 pJAT plasmids are Gateway
+# DESTINATION vectors, so they carry attR3-attR6. LR Clonase converts
+#     attL (synthesized fragment) x attR (pJAT backbone) -> attB (final clone)
+# so attL sites are consumed by the reaction and never appear in a finished
+# pJAT plasmid. See project_documentation/attl_and_map_spec.md (Part A).
+#
+# Sequences were extracted verbatim from the published GenBank attachment
+# "Gateway arms.gb" in the Atalanta protocol and cross-checked against the Twist
+# example. Do not hand-edit: they are biological constants.
+# ============================================================================
+
+version: "1.0.0"
+schema: "gateway_attl_templates/1.0"
+label: "template from published protocol"
+
+# Fragment 1 (5' side). attL3 reads forward; attL4 is stored in its inward
+# (reverse-complemented) orientation exactly as it appears in the synthesized
+# fragment. attl4_forward is provided for inspection only.
+attl3: "AAATAATGATTTTATTTTGACTGATAGTGACCTGTTCGTTGCAACAAATTGATAAGCAATGCTTTTTTATAATGCCAACTTTGTATAATAAAGTTG"
+attl4: "CAACTTTTCTATACAAAGTTGGCATTATAAGAAAGCATTGCTTATCAATTTGTTGCAACGAACAGGTCACTATCAGTCAAAATAAAATCATTATTTG"
+attl4_forward: "CAAATAATGATTTTATTTTGACTGATAGTGACCTGTTCGTTGCAACAAATTGATAAGCAATGCTTTCTTATAATGCCAACTTTGTATAGAAAAGTTG"
+
+# Fragment 2 (3' side). Same convention: attL6 stored inward.
+attl5: "CAAATAATGATTTTATTTTGACTGATAGTGACCTGTTCGTTGCAACAAATTGATGAGCAATGCTTTTTTATAATGCCAACTTTGTATACAAAAGTTG"
+attl6: "CAACTTTTTAATACAAAGTTGGCATTATAAGAAAGCATTGCTTATCAATTTGTTGCAACGAACAGGTCACTATCAGTCAAAATAAAATCATTATTTG"
+attl6_forward: "CAAATAATGATTTTATTTTGACTGATAGTGACCTGTTCGTTGCAACAAATTGATAAGCAATGCTTTCTTATAATGCCAACTTTGTATTAAAAAGTTG"
+
+# 5' tRNA spacer (D. melanogaster tRNA:Ala-CGC-1-1, 72 bp). pjat_assemble_fragments()
+# uses a single `trna` argument on both sides of the spacer; the protocol uses
+# tRNA-Ala 5' and tRNA-Gln 3', so trna_3p_full_78bp is exposed separately for
+# callers that want the exact 3' version.
+trna: "GGGGACGTAGCTCAGTGGTAGAGCGCTCGCTTCGCATGTGAGAAGTCCCGGGTTCAAACCCCGGCGTCTCCA"
+trna_3p_full_78bp: "TAACAAAGCACCAGTGGTCTAGTGGTAGAATAGTACCCTGCCACGGTACAGACCCGGGTTCGATTCCCGGCTGGTGCA"
+
+# Individual parts of the tRNA-sgRNA-tRNA cassette, for inspection / reassembly.
+cassette_parts:
+  u6_leader_5p: "CTTTGAGTGTGTGTAGACATCAA"
+  trna_5p_ala: "GGGGACGTAGCTCAGTGGTAGAGCGCTCGCTTCGCATGTGAGAAGTCCCGGGTTCAAACCCCGGCGTCTCCA"
+  sgrna_scaffold: "GTTTTAGAGCTAGAAATAGCAAGTTAAAATAAGGCTAGTCCGTTATCAACTTGAAAAAGTGGCACCGAGTCGGTGC"
+  trna_3p_leader_20bp: "TAACAAAGCACCAGTGGTCT"
+  trna_3p_core_58bp: "AGTGGTAGAATAGTACCCTGCCACGGTACAGACCCGGGTTCGATTCCCGGCTGGTGCA"
+  trna_3p_full_78bp: "TAACAAAGCACCAGTGGTCTAGTGGTAGAATAGTACCCTGCCACGGTACAGACCCGGGTTCGATTCCCGGCTGGTGCA"
+  u6_terminator_3p: "TTTTTTGCCTACCTGGAGCCTGAGAGTTGTTCAATAAAATAAAAATGTTT"
+
+provenance:
+  source: "Stern DL (2024) Janelia Atalanta series plasmid cloning V.3 (Gateway arms.gb, 25-MAR-2024); Stern, Kim & Behrman (2024) bioRxiv 2023.06.17.545412"
+  url: "https://dx.doi.org/10.17504/protocols.io.bp2l6bjokgqe/v3"
+  retrieved: "2026-10-17"
+  verified: true
+  notes: "Cross-checked against attL_pieces.gb and the Twist example 2R_5.gb. attL4 and attL6 are stored in the inward orientation used in the synthesized fragments."

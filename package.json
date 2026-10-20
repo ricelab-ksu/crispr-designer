@@ -1,0 +1,22 @@
+{
+  "name": "bioinformatics-electron",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Standalone Electron desktop apps for the Plasmid Designer and CRISPR Designer R/Shiny tools",
+  "license": "MIT",
+  "scripts": {
+    "stage": "node tools/stage-app.js",
+    "stage:all": "node tools/stage-app.js && node tools/stage-app.js crispr-designer",
+    "build:mac": "node tools/build-app.js",
+    "build:mac:all": "node tools/build-app.js && node tools/build-app.js crispr-designer",
+    "test:r": "node tools/run-r-tests.js",
+    "verify:references": "node tools/verify-references.js"
+  },
+  "devDependencies": {
+    "@electron/packager": "^20.3.0",
+    "electron": "^36.9.5"
+  },
+  "allowScripts": {
+    "electron@36.9.5": true
+  }
+}

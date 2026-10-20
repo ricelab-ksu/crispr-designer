@@ -1,0 +1,15 @@
+._*
+.DS_Store
+.Rhistory
+.RData
+.Rproj.user/
+subagent_logs/
+*.fai
+*.idx
+uploads/*.fasta
+uploads/*.fastq
+# keep the bundled sample donor FASTA
+!uploads/sample_*.fasta
+# Addgene map cache — rebuild with tools/fetch_addgene_maps.R (images are (c) Addgene)
+www/addgene_maps/*.png
+www/addgene_maps/*.part

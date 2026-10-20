@@ -1,0 +1,34 @@
+# ── OS / editor cruft ───────────────────────────────────────────
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+
+# ── Node ─────────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+.npm/
+
+# ── Build output ─────────────────────────────────────────────────
+dist/
+build/
+*.app
+*.dmg
+*.zip
+
+# ── Packaged R runtime (rebuild with tools/build-r-runtime.sh) ───
+shared/r/R.framework/
+shared/r/library/
+
+# ── Runtime state / large data ───────────────────────────────────
+reference_files/
+*.gene_index_cache/
+.gene_index_cache/
+gene_index_cache/
+logs/
+subagent_logs/
+.uploads/
+
+# NOTE: apps/*/payload/www/addgene_maps/ is intentionally COMMITTED.
+# The Addgene/SnapGene vector maps are required for the offline plasmid
+# map view; without them the app degrades but the feature is dead.

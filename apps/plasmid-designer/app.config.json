@@ -1,0 +1,13 @@
+{
+  "id": "plasmid-designer",
+  "title": "Plasmid Designer",
+  "productName": "Plasmid Designer",
+  "version": "1.0.0",
+  "description": "Plasmid Designer — design and plan CRISPR donor plasmids",
+  "author": "Rice Lab",
+  "appScript": "Plasmid_Designer.R",
+  "accent": "#89b4fa",
+  "splashSub": "Starting the design engine (R)…",
+  "envPrefix": "PLASMID",
+  "outputDirName": "Plasmid_Designs"
+}
