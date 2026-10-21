@@ -16,7 +16,7 @@ const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
-const { resolveRRuntime } = require('./r-runtime');
+const { resolveRRuntime, resolveRRoot } = require('./r-runtime');
 const { resolveReferences } = require('./resolve-references');
 
 const REPO_ROOT = path.join(__dirname, '..', '..');
@@ -46,6 +46,23 @@ function startApp(config) {
 
   const IPC = `${config.id}:`;
 
+  // ── Console mirror ───────────────────────────────────────────────────────
+  // Mirror main-process console output to <userData>/main.log so launch and
+  // R-sidecar issues are diagnosable from a packaged app (stdout is detached
+  // when launched through LaunchServices).
+  const LOG_FILE = path.join(app.getPath('userData'), 'main.log');
+  const origLog = console.log;
+  const origErr = console.error;
+  console.log = (...a) => {
+    origLog(...a);
+    try { fs.appendFileSync(LOG_FILE, `[log] ${a.join(' ')}\n`); } catch (e) { /* ignore */ }
+  };
+  console.error = (...a) => {
+    origErr(...a);
+    try { fs.appendFileSync(LOG_FILE, `[err] ${a.join(' ')}\n`); } catch (e) { /* ignore */ }
+  };
+  try { fs.mkdirSync(path.dirname(LOG_FILE), { recursive: true }); } catch (e) { /* ignore */ }
+
   // ── Path resolution ──────────────────────────────────────────────────────
 
   /** Directory holding the R payload (the .R app script and its R/ folder). */
@@ -55,16 +72,34 @@ function startApp(config) {
       if (fs.existsSync(dev)) return dev;
     }
     if (process.resourcesPath) {
-      const p = path.join(process.resourcesPath, 'app');
-      if (fs.existsSync(p)) return p;
+      const app = path.join(process.resourcesPath, 'app');
+      // @electron/packager layout: payload lives in Resources/app/payload/
+      const payload = path.join(app, 'payload');
+      if (fs.existsSync(payload)) return payload;
+      // electron-builder / HCR layout: payload files sit flat in Resources/app/
+      if (fs.existsSync(path.join(app, config.appScript))) return app;
+      if (fs.existsSync(app)) return app;
     }
     return __dirname;
   }
 
-  /** Directory that holds the shared R runtime and the pJAT plasmid store. */
-  function resolveRRoot() {
-    if (process.resourcesPath) return path.join(process.resourcesPath, 'r');
-    return null;
+  /** Directory that holds the shared R runtime and the pJAT plasmid store.
+   *  Supports both bundle layouts via the shared resolver in r-runtime.js. */
+  function findRRoot() {
+    return resolveRRoot(process.resourcesPath);
+  }
+
+  /** Preload script: generated beside the app root (build/preload.js),
+   *  falling back to beside this file (shared/electron/preload.js). */
+  function resolvePreload() {
+    const candidates = [
+      path.join(__dirname, 'preload.js'),
+      path.join(__dirname, '..', '..', 'preload.js'),
+    ];
+    for (const p of candidates) {
+      if (fs.existsSync(p)) return p;
+    }
+    return candidates[0];
   }
 
   // ── R child process + port handshake ─────────────────────────────────────
@@ -100,6 +135,8 @@ function startApp(config) {
       R_PROFILE_USER: '', R_ENVIRON_USER: '',
     };
     if (rt.env) Object.assign(spawnEnv, rt.env);
+    // runner.R reads the payload script name from the environment.
+    spawnEnv.APP_SCRIPT = config.appScript;
 
     console.log(`[${config.id}] spawning R: ${rt.executable} ${args.join(' ')}`);
     rProc = spawn(rt.executable, args, {
@@ -122,6 +159,17 @@ function startApp(config) {
       console.error(`[${config.id}] R >>`,
         s.trimEnd().split('\n').join(`\n[${config.id}] R >> `));
     });
+    rProc.on('error', (err) => {
+      if (rPortResolve) { rPortResolve(null); rPortResolve = null; }
+      console.error(`[${config.id}] failed to launch R:`, err.message);
+    });
+    rProc.on('exit', (code, signal) => {
+      console.log(`[${config.id}] R exited code=${code} signal=${signal}`);
+      if (rPortResolve) { rPortResolve(null); rPortResolve = null; }
+    });
+    return rProc;
+  }
+
   // ── Window management ────────────────────────────────────────────────────
 
   let mainWindow = null;
@@ -133,7 +181,7 @@ function startApp(config) {
       backgroundColor: '#1e1e2e',
       show: false,
       webPreferences: {
-        preload: path.join(__dirname, 'preload.js'),
+        preload: resolvePreload(),
         contextIsolation: true, nodeIntegration: false, sandbox: true,
       },
     });
@@ -198,6 +246,7 @@ function startApp(config) {
         }
       });
     };
+
     mainWindow.webContents.on('did-fail-load', (_e, code, desc, _url, isMainFrame) => {
       if (isMainFrame && code === -102 && attempts < 120) {
         setTimeout(load, 400);
@@ -219,15 +268,6 @@ function startApp(config) {
       + 'Make sure the app resources are intact, then relaunch.');
   }
 
-    rProc.on('error', (err) => {
-      if (rPortResolve) { rPortResolve(null); rPortResolve = null; }
-      console.error(`[${config.id}] failed to launch R:`, err.message);
-    });
-    rProc.on('exit', (code, signal) => {
-      console.log(`[${config.id}] R exited code=${code} signal=${signal}`);
-      if (rPortResolve) { rPortResolve(null); rPortResolve = null; }
-    });
-    return rProc;
   // ── Reference resolution ─────────────────────────────────────────────────
 
   /**
@@ -238,10 +278,10 @@ function startApp(config) {
    * runtime and may legitimately be absent.
    */
   function resolveAndExportReferences() {
-    const rRoot = resolveRRoot();
+    const rRoot = findRRoot();
     const bundledPjats = rRoot
       ? path.join(rRoot, 'janelia_atalanta_plasmids')
-      : path.join(REPO_ROOT, 'shared', 'reference', 'janelia_atalanta_plasmids');
+      : path.join(REPO_ROOT, 'shared', 'r', 'janelia_atalanta_plasmids');
 
     const env = { ...process.env };
 
@@ -390,5 +430,3 @@ function startApp(config) {
 }
 
 module.exports = { startApp };
-
-  }

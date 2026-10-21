@@ -21,6 +21,25 @@ function newestVersion(versionsDir) {
 }
 
 /**
+ * Root of the bundled R runtime inside a packaged .app, or null.
+ *
+ * Two layouts are supported:
+ *   Contents/Resources/r       ← electron-builder extraResources (HCR style)
+ *   Contents/Resources/app/r   ← @electron/packager (everything under app/)
+ */
+function resolveRRoot(resourcesPath) {
+  if (!resourcesPath) return null;
+  const candidates = [
+    path.join(resourcesPath, 'r'),
+    path.join(resourcesPath, 'app', 'r'),
+  ];
+  for (const c of candidates) {
+    if (fs.existsSync(c)) return c;
+  }
+  return null;
+}
+
+/**
  * Locate an R runtime to spawn.
  *
  * @param {object} opts
@@ -40,10 +59,10 @@ function resolveRRuntime({ dev, resourcesPath, env }) {
   }
 
   // ── Packaged: bundled R.framework ───────────────────────────────────────
-  const rRoot = path.join(resourcesPath, 'r');
-  const versionsDir = path.join(rRoot, 'R.framework', 'Versions');
+  const rRoot = resolveRRoot(resourcesPath);
+  const versionsDir = rRoot ? path.join(rRoot, 'R.framework', 'Versions') : null;
   const version = newestVersion(versionsDir);
-  if (version) {
+  if (rRoot && version) {
     const res = path.join(versionsDir, version, 'Resources');
     const execR = path.join(res, 'bin', 'exec', 'R');
     if (fs.existsSync(execR)) {
@@ -68,7 +87,7 @@ function resolveRRuntime({ dev, resourcesPath, env }) {
   }
 
   // ── Packaged: Windows-style R-x.y layout (future platform support) ──────
-  if (fs.existsSync(rRoot)) {
+  if (rRoot && fs.existsSync(rRoot)) {
     const sub = fs.readdirSync(rRoot).find((d) => /^R-\d/.test(d));
     if (sub) {
       const rHome = path.join(rRoot, sub);
@@ -95,8 +114,10 @@ function resolveRRuntime({ dev, resourcesPath, env }) {
 
 /** Path to the bundled package library, or null when there is none. */
 function bundledLibrary(resourcesPath) {
-  const lib = path.join(resourcesPath, 'r', 'library');
+  const rRoot = resolveRRoot(resourcesPath);
+  if (!rRoot) return null;
+  const lib = path.join(rRoot, 'library');
   return fs.existsSync(lib) ? lib : null;
 }
 
-module.exports = { resolveRRuntime, bundledLibrary, newestVersion };
+module.exports = { resolveRRuntime, resolveRRoot, bundledLibrary, newestVersion };

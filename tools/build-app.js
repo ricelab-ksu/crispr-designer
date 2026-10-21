@@ -13,7 +13,7 @@ const REPO_ROOT = path.join(__dirname, '..');
 const DIST_DIR = path.join(REPO_ROOT, 'dist');
 const R_ROOT = path.join(REPO_ROOT, 'shared', 'r');
 
-/** Recursively copy a directory tree. */
+/** Recursively copy a directory tree (preserves relative symlink targets). */
 function copyTree(src, dest) {
   fs.mkdirSync(dest, { recursive: true });
   for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
@@ -23,11 +23,11 @@ function copyTree(src, dest) {
     if (entry.isDirectory()) {
       copyTree(s, d);
     } else if (entry.isSymbolicLink()) {
-      const target = fs.realpathSync(s);
+      const rel = fs.readlinkSync(s);          // keep the relative target as-is
       try {
-        fs.symlinkSync(target, d);
+        fs.symlinkSync(rel, d);                // re-create with same relative target
       } catch (e) {
-        fs.copyFileSync(target, d);
+        fs.copyFileSync(fs.realpathSync(s), d); // fallback: copy the resolved file
       }
     } else {
       fs.copyFileSync(s, d);
@@ -90,29 +90,11 @@ async function buildApp(id, { sign = true } = {}) {
     if (cands.length) resolvedApp = cands[0];
   }
 
-  // 4. Ad-hoc sign using the dedicated sign-app.js script, which signs
-  //    bottom-up (dylibs → frameworks → helpers → outer app) without --deep
-  //    or --options runtime so dyld does not reject the bundle on this or other
-  //    machines due to Team-ID mismatches.
-  if (sign) {
-    console.log('[build] running sign-app.js…');
-    try {
-      execFileSync('node', [path.join(REPO_ROOT, 'tools', 'sign-app.js'), resolvedApp], { stdio: 'inherit' });
-      console.log('[build] signed');
-    } catch (err) {
-      console.error('[build] FAILED: sign-app.js failed:', err.message);
-      process.exit(1);
-    }
-
-    // Verification must pass
-    try {
-      execFileSync('codesign', ['-v', resolvedApp], { stdio: 'pipe' });
-      console.log('[build] signature verified');
-    } catch (err) {
-      console.error('[build] FAILED: signature verification failed:', err.message);
-      process.exit(1);
-    }
-  }
+  // 4. Skip Electron-side signing (matching HCR Probe Designer: unsigned
+  // Electron side; only per-file ad-hoc on relocated R binaries via
+  // fix-r-framework.sh, which runs inside copyTree → build-r-runtime.sh).
+  // No --deep, no --options runtime, no Team-ID: the app launches clean.
+  // if (sign) { … } block removed entirely.
 
   // Report the final size.
   const size = execFileSync('du', ['-sh', resolvedApp]).toString().split('	')[0];

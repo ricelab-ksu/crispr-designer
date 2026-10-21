@@ -92,7 +92,7 @@ function stageApp(id) {
   // 3. The pJAT plasmid collection (616 KB) is bundled with the app so the
   //    plasmid designer is fully self-contained. It is also placed inside the
   //    payload so a source checkout behaves like a packaged build.
-  const pjatSrc = path.join(REPO_ROOT, 'shared', 'reference', 'janelia_atalanta_plasmids');
+  const pjatSrc = path.join(REPO_ROOT, 'shared', 'r', 'janelia_atalanta_plasmids');
   if (fs.existsSync(pjatSrc)) {
     copyTree(pjatSrc, path.join(buildDir, 'payload', 'janelia_atalanta_plasmids'), []);
     copyTree(pjatSrc, path.join(buildDir, 'r', 'janelia_atalanta_plasmids'), []);
