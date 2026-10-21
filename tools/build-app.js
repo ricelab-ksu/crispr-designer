@@ -1,14 +1,6 @@
 #!/usr/bin/env node
 /**
  * Package an application into a macOS .app bundle.
- *
- * Steps:
- *   1. stage the app (tools/stage-app.js),
- *   2. copy the shared R runtime into the staged tree,
- *   3. run @electron/packager,
- *   4. ad-hoc sign the bundle so Gatekeeper lets it run.
- *
- * Usage: node tools/build-app.js [app-id] [--no-sign]
  */
 
 const fs = require('fs');
@@ -31,8 +23,6 @@ function copyTree(src, dest) {
     if (entry.isDirectory()) {
       copyTree(s, d);
     } else if (entry.isSymbolicLink()) {
-      // Recreate the symlink rather than resolving it through copyFileSync,
-      // which fails on special files such as sockets.
       const target = fs.realpathSync(s);
       try {
         fs.symlinkSync(target, d);
@@ -76,7 +66,7 @@ async function buildApp(id, { sign = true } = {}) {
     out: outDir,
     appVersion: cfg.version || '1.0.0',
     appBundleId: `edu.ricelab.${cfg.id}`,
-    appCategoryType: 'public.app-category.education',
+    appCategoryType: 'public.app.category.education',
     icon: fs.existsSync(icon) ? icon : undefined,
     overwrite: true,
     asar: false,
@@ -100,34 +90,32 @@ async function buildApp(id, { sign = true } = {}) {
     if (cands.length) resolvedApp = cands[0];
   }
 
-  // 4. Ad-hoc sign. Unsigned bundles are blocked by Gatekeeper; an ad-hoc
-  //    signature is enough for a locally distributed lab tool.
+  // 4. Ad-hoc sign using the dedicated sign-app.js script, which signs
+  //    bottom-up (dylibs → frameworks → helpers → outer app) without --deep
+  //    or --options runtime so dyld does not reject the bundle on this or other
+  //    machines due to Team-ID mismatches.
   if (sign) {
-    console.log('[build] ad-hoc signing…');
+    console.log('[build] running sign-app.js…');
     try {
-      execFileSync('codesign', [
-        '--force', '--deep', '--sign', '-',
-        '--options', 'runtime',
-        '--timestamp=none',
-        resolvedApp,
-      ], { stdio: 'inherit' });
+      execFileSync('node', [path.join(REPO_ROOT, 'tools', 'sign-app.js'), resolvedApp], { stdio: 'inherit' });
       console.log('[build] signed');
     } catch (err) {
-      console.warn('[build] WARNING: signing failed:', err.message);
+      console.error('[build] FAILED: sign-app.js failed:', err.message);
+      process.exit(1);
     }
 
-    // Re-sign the nested helpers after --deep, which can disturb them.
+    // Verification must pass
     try {
-      execFileSync('codesign', ['--verify', '--deep', '--strict', resolvedApp],
-        { stdio: 'pipe' });
-      console.log('[build] signature verifies');
-    } catch {
-      console.warn('[build] WARNING: signature verification failed');
+      execFileSync('codesign', ['-v', resolvedApp], { stdio: 'pipe' });
+      console.log('[build] signature verified');
+    } catch (err) {
+      console.error('[build] FAILED: signature verification failed:', err.message);
+      process.exit(1);
     }
   }
 
   // Report the final size.
-  const size = execFileSync('du', ['-sh', resolvedApp]).toString().split('\t')[0];
+  const size = execFileSync('du', ['-sh', resolvedApp]).toString().split('	')[0];
   console.log(`[build] done: ${resolvedApp} (${size})`);
 
   return resolvedApp;

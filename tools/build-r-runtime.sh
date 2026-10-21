@@ -121,6 +121,11 @@ if [ -d "$REPO_ROOT/shared/reference/janelia_atalanta_plasmids" ]; then
      "$OUT_DIR/janelia_atalanta_plasmids/" 2>/dev/null || true
 fi
 
+
+# Relocate and re-sign the framework so it runs from anywhere
+# (fixes dyld Team ID mismatch by making @loader_path-relative dylib ids)
+bash "$REPO_ROOT/tools/fix-r-framework.sh" "$VER_DST/Resources"
+
 echo "==> Verifying the runtime"
 VERIFY_R="$VER_DST/Resources/bin/exec/R"
 VERIFY_LIBS="$LIB_APP:$LIB_DST"
