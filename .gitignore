@@ -6,3 +6,4 @@
 subagent_logs/
 *.fai
 *.idx
+.gene_index_cache/
