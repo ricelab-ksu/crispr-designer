@@ -1286,19 +1286,25 @@ server <- function(input, output, session) {
   TRUE
 }
 
-.args <- commandArgs(trailingOnly = TRUE)
-if (any(grepl("^(--help|-h)$", .args))) {
-  cat("Usage: Rscript Plasmid_Designer.R [--gene <symbol>] [--species <species>] [--out <dir>]\n")
-  invisible(NULL)
-} else if (length(.args) > 0L && !any(grepl("^--file=", .args))) {
-  .run_pjd_cli(.args)
-} else if (.pjd_port_in_use(PORT)) {
-  # A server is already listening (e.g. the app was double-clicked twice):
-  # just bring the user to it instead of failing with "port in use".
-  message("Plasmid Designer is already running on port ", PORT,
-          " — opening http://127.0.0.1:", PORT, " in your browser.")
-  utils::browseURL(sprintf("http://127.0.0.1:%d", PORT))
-} else {
-  shiny::shinyApp(ui, server,
-                  options = list(port = PORT, launch.browser = TRUE))
+# Standalone-execution dispatch (Rscript / `R -f`). When this file is sourced
+# by the Electron runner (shared/electron/runner.R), sys.nframe() > 0 and none
+# of this runs: sourcing only defines ui/server, and the runner hosts the app
+# itself on a random port (printing APP_PORT= for the port handshake).
+if (sys.nframe() == 0L) {
+  .args <- commandArgs(trailingOnly = TRUE)
+  if (any(grepl("^(--help|-h)$", .args))) {
+    cat("Usage: Rscript Plasmid_Designer.R [--gene <symbol>] [--species <species>] [--out <dir>]\n")
+    invisible(NULL)
+  } else if (length(.args) > 0L && !any(grepl("^--file=", .args))) {
+    .run_pjd_cli(.args)
+  } else if (.pjd_port_in_use(PORT)) {
+    # A server is already listening (e.g. the app was double-clicked twice):
+    # just bring the user to it instead of failing with "port in use".
+    message("Plasmid Designer is already running on port ", PORT,
+            " — opening http://127.0.0.1:", PORT, " in your browser.")
+    utils::browseURL(sprintf("http://127.0.0.1:%d", PORT))
+  } else {
+    shiny::shinyApp(ui, server,
+                    options = list(port = PORT, launch.browser = TRUE))
+  }
 }
