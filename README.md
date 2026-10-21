@@ -77,20 +77,26 @@ signing.
 apps/
   plasmid-designer/
     app.config.json      app metadata (id, title, colours, env prefix)
-    payload/             the R application (unchanged from the original repo)
+    payload/             the R application (adapted from the original repo)
   crispr-designer/
     app.config.json
     payload/
 shared/
   electron/              shared Electron main process + R sidecar
   r/app_paths.R          portable R path resolution (shared by both payloads)
-  reference/             the bundled pJAT plasmid collection
+  r/janelia_atalanta_plasmids/   the bundled pJAT plasmid collection
   icons/
+docs/
+  ARCHITECTURE.md        launch chain, R relocation, signing model
+  BUILD-AND-VERIFY.md    build runbook + verification gates
+  DEBUG-LOG-2026-10-20.md  root-cause record of the launch fixes
 tools/
   stage-app.js           assemble apps/<id>/build/
-  build-app.js           package + ad-hoc sign a .app
-  build-r-runtime.sh     assemble shared/r/
+  build-app.js           package a .app (unsigned, HCR model)
+  build-r-runtime.sh     assemble shared/r/ from the system R
+  fix-r-framework.sh     relocate + re-sign BOTH R trees (framework + library)
   r-closure.R            compute the R dependency closure
+  verify-references.js   reference-store parity check
 ```
 
 ---
@@ -100,21 +106,25 @@ tools/
 ```bash
 npm install                 # Electron + @electron/packager
 npm run stage:all           # stage both apps
-npm run build:mac:all       # package + sign both apps
+npm run build:mac:all       # package both apps (unsigned)
 ```
 
 The R runtime is built separately and is cached:
 
 ```bash
-tools/build-r-runtime.sh    # → shared/r/  (~330 MB)
+tools/build-r-runtime.sh    # → shared/r/  (also relocates + re-signs it)
 ```
 
-Results land in `dist/<app-id>/<App Name>.app`.
+Results land in `dist/<app-id>/<App Name>.app`. See
+**docs/BUILD-AND-VERIFY.md** for the full runbook with verification gates.
 
 ### Gatekeeper
 
-The apps are **ad-hoc signed**, not notarized. On first launch macOS will
-refuse to open them. To run one:
+The apps are **unsigned, exactly like the reference HCR Probe Designer.app**
+(no ad-hoc signing, no hardened runtime — signing the Electron side with
+`--options runtime` makes macOS reject the bundle; see
+docs/DEBUG-LOG-2026-10-20.md). On first launch macOS will refuse to open
+a downloaded copy. To run one:
 
 1. Right-click the app in Finder → **Open**.
 2. Confirm **Open** in the dialog.
